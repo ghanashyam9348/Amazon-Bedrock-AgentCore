@@ -1,6 +1,21 @@
 # Amazon Bedrock AgentCore FAQ Assistant
 
-This Project shows how to build and run a tool-using FAQ agent in three stages:
+## Project Description
+
+This project is a practical reference for building a Retrieval-Augmented Generation (RAG) style FAQ assistant with Amazon Bedrock AgentCore.
+It demonstrates how to move from a local prototype to a deployable runtime service, and then to a memory-enabled conversational agent.
+
+The assistant uses semantic search over a custom FAQ dataset, calls tools to retrieve relevant answers, and returns grounded responses using an LLM.
+
+## What This Project Does
+
+- Ingests FAQ question-answer pairs from [data/custom_faq.csv](data/custom_faq.csv)
+- Builds vector embeddings and stores them in a FAISS index for fast semantic retrieval
+- Exposes retrieval tools the agent can call during reasoning
+- Runs in three modes: local script, AgentCore runtime, and AgentCore runtime with short-term memory
+- Supports multi-turn conversations by preserving context with actor_id and thread_id in memory mode
+
+This project shows how to build and run a tool-using FAQ agent in three stages:
 
 1. Local agent execution
 2. AgentCore runtime deployment
