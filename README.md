@@ -1,120 +1,113 @@
-# AgentCore Crash Course (GitHub Upload Version)
+# Amazon Bedrock AgentCore FAQ Assistant
 
-This folder is a clean, upload-ready version of the project.
-It was prepared in a separate directory so the original project files remain unchanged.
+This Project shows how to build and run a tool-using FAQ agent in three stages:
 
-## What is in this version
+1. Local agent execution
+2. AgentCore runtime deployment
+3. AgentCore runtime with short-term conversation memory
 
-- Uses a new custom dataset: `data/custom_faq.csv`
-- Does not include the original provided dataset
-- Includes scripts for local LangGraph, AgentCore runtime, and AgentCore memory
-- Includes a build script for FAISS index generation
+This repository uses a custom FAQ dataset in [data/custom_faq.csv](data/custom_faq.csv) and does not include the original course dataset.
 
-## Project file guide
+## Features
 
-### `00_langgraph_agent.py`
-Implements a local tool-using FAQ assistant using LangChain + LangGraph-style agent tooling:
+- Semantic FAQ retrieval using FAISS
+- Tool-based agent behavior (search + query reformulation)
+- Local script and AgentCore runtime entrypoints
+- Memory-aware runtime flow using thread and actor identifiers
 
-- Loads FAQ rows from `data/custom_faq.csv`
-- Builds embeddings with `sentence-transformers/all-MiniLM-L6-v2`
-- Creates a FAISS vector store in memory
-- Defines three tools:
-  - `search_faq`
-  - `search_detailed_faq`
-  - `reformulate_query`
-- Runs the agent with Groq model `openai/gpt-oss-20b`
+## Repository Structure
 
-Use this file to understand the baseline agent behavior before deployment.
+- [00_langgraph_agent.py](00_langgraph_agent.py): Local baseline agent that builds FAISS from CSV in memory and answers a sample question.
+- [build_index.py](build_index.py): One-time utility to generate [faiss_index/](faiss_index) from [data/custom_faq.csv](data/custom_faq.csv).
+- [01_agentcore_runtime.py](01_agentcore_runtime.py): AgentCore runtime app with stateless request handling.
+- [02_agentcore_memory.py](02_agentcore_memory.py): AgentCore runtime app with short-term memory via AgentCoreMemorySaver.
+- [data/custom_faq.csv](data/custom_faq.csv): Custom public FAQ content used for retrieval.
+- [faiss_index/](faiss_index): Generated FAISS index artifacts used by runtime scripts.
+- [pyproject.toml](pyproject.toml): Python and dependency configuration.
+- [.sample_env](.sample_env): Environment variable template.
 
-### `build_index.py`
-Pre-computes a local FAISS index from `data/custom_faq.csv`:
+## Requirements
 
-- Reads question/answer records
-- Splits content into chunks
-- Uses `FastEmbedEmbeddings` (`BAAI/bge-small-en-v1.5`)
-- Saves index in `faiss_index/`
+- Python 3.13+
+- uv package manager
+- AWS credentials configured for AgentCore workflows
+- GROQ_API_KEY for model access
 
-Run this before executing runtime scripts that load `faiss_index`.
+## Quick Start
 
-### `01_agentcore_runtime.py`
-Implements AgentCore runtime integration without conversation memory:
-
-- Loads pre-built `faiss_index/`
-- Uses the same three FAQ tools
-- Creates `BedrockAgentCoreApp` entrypoint
-- Accepts payload prompt and returns final agent response
-
-Use this file for stateless runtime deployment.
-
-### `02_agentcore_memory.py`
-Implements AgentCore runtime with short-term memory support:
-
-- Loads pre-built `faiss_index/`
-- Configures `AgentCoreMemorySaver`
-- Uses payload fields `actor_id` and `thread_id`
-- Preserves thread-level context across invocations
-
-Use this file for multi-turn conversational behavior.
-
-### `data/custom_faq.csv`
-Custom FAQ dataset created for this upload package.
-
-### `faiss_index/`
-Directory used to store generated FAISS index files.
-
-### `pyproject.toml`
-Dependency and Python version configuration (`>=3.13`).
-
-### `.sample_env`
-Template for environment variables.
-
-### `.gitignore`
-Ignores local/secret/runtime artifact files.
-
-## Setup
-
-1. Create virtual environment and install dependencies:
+1. Install dependencies.
 
 ```bash
 uv sync
 ```
 
-2. Create `.env` from `.sample_env` and add your API key:
+2. Create a local environment file.
 
-```env
-GROQ_API_KEY=your_real_key
+```bash
+cp .sample_env .env
 ```
 
-3. Build vector index:
+3. Set your key in .env.
+
+```env
+GROQ_API_KEY=your_groq_api_key
+```
+
+4. Build vector index from the custom dataset.
 
 ```bash
 uv run python build_index.py
 ```
 
-## Run
+## Run Locally
 
-### Local baseline
+Execute the local baseline agent:
 
 ```bash
 uv run python 00_langgraph_agent.py
 ```
 
-### AgentCore runtime (stateless)
+## Run with AgentCore (Stateless)
 
 ```bash
 agentcore configure -e 01_agentcore_runtime.py
-agentcore launch --env GROQ_API_KEY=your_real_key
+agentcore launch --env GROQ_API_KEY=your_groq_api_key
 ```
 
-### AgentCore runtime (with memory)
+Example invoke:
+
+```bash
+agentcore invoke '{"prompt":"Explain roaming activation"}'
+```
+
+## Run with AgentCore Memory
 
 ```bash
 agentcore configure -e 02_agentcore_memory.py
-agentcore launch --env GROQ_API_KEY=your_real_key
+agentcore launch --env GROQ_API_KEY=your_groq_api_key
 ```
 
-## Notes
+Example multi-turn invoke:
 
-- Keep using the same `thread_id` in memory mode to preserve context.
-- Use a new `thread_id` to start a fresh conversation.
-- If `faiss_index/` is missing, run `build_index.py` again.
+```bash
+agentcore invoke '{"prompt":"My name is Alex","actor_id":"user1","thread_id":"chat1"}'
+agentcore invoke '{"prompt":"What is my name?","actor_id":"user1","thread_id":"chat1"}'
+```
+
+Use the same thread_id to preserve short-term context.
+
+## Important Notes
+
+- Rebuild [faiss_index/](faiss_index) whenever [data/custom_faq.csv](data/custom_faq.csv) changes.
+- [02_agentcore_memory.py](02_agentcore_memory.py) currently includes a hardcoded MEMORY_ID and region; update them for your AWS environment before production use.
+- Never commit secrets such as .env files.
+
+## Troubleshooting
+
+- If faiss_index is missing, run: uv run python build_index.py
+- If model calls fail, verify GROQ_API_KEY in .env
+- If AgentCore commands fail, verify AWS credentials and region access
+
+## License
+
+Add your preferred license in this repository before broad public distribution.
