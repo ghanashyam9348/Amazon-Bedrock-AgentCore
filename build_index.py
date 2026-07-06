@@ -1,5 +1,5 @@
 """
-Run this locally once to pre-compute the FAISS index from lauki_qna.csv.
+Run this locally once to pre-compute the FAISS index from data/custom_faq.csv.
 The saved index is bundled into the Docker image so the runtime loads it
 instantly without making any Bedrock embedding calls at startup.
 
